@@ -1,105 +1,84 @@
-# 🏎 Car Racing RL
+# 🏎️ AI Car Racing — Reinforcement Learning
 
-Environnement de course 2D entraîné avec **PPO** (Proximal Policy Optimization).
-La voiture apprend à naviguer un circuit grâce à 7 capteurs raycast et une physique simplifiée.
+Une implémentation performante d'un environnement de course automobile 2D pour l'apprentissage par renforcement (**Reinforcement Learning**), utilisant **Stable-Baselines3** (PPO) et **Gymnasium**.
+
+L'agent apprend à piloter une voiture sur un circuit complexe en utilisant uniquement des capteurs de distance (raycasts) et sa vitesse actuelle.
 
 ---
 
-## Installation
+## ✨ Points Forts
+
+*   🚀 **Entraînement Ultra-Rapide** : Optimisé pour tourner sur 12 environnements en parallèle (Synchro CPU/GPU).
+*   🛰️ **Capteurs Raycast** : 7 capteurs de proximité simulant un Lidar (vision à 180°).
+*   🎬 **Rendu Temps Réel** : Visualisez l'apprentissage en direct grâce à Pygame.
+*   📊 **Monitoring complet** : Intégration TensorBoard pour suivre les récompenses et la perte (loss).
+*   🛠️ **Physique Réaliste (Simplifiée)** : Gestion de l'inertie, de l'accélération et du freinage.
+
+---
+
+## 🛠️ Installation
 
 ```bash
+# Cloner le dépôt (une fois créé)
+# git clone https://github.com/votre-nom/ai_car.git
+# cd ai_car
+
+# Installer les dépendances
 pip install -r requirements.txt
 ```
 
 ---
 
-## Utilisation
+## 🚀 Utilisation rapides
 
-### 1. Tester l'environnement à la main
+### 1. Mode Manuel (Jouer vous-même)
+Testez la physique du véhicule et découvrez le tracé du circuit.
 ```bash
 python play_human.py
 ```
-Contrôles : **↑↓←→** (ou ZQSD) pour conduire, **R** pour restart.
+*   **Z/S/Q/D** ou **Flèches** : Piloter
+*   **R** : Recommencer
 
-### 2. Lancer l'entraînement
+### 2. Entraînement de l'IA
+Lancez l'apprentissage avec l'algorithme PPO.
 ```bash
-python train.py                  # 1 million de steps (~20 min sur CPU)
-python train.py 2000000          # durée personnalisée
+python train.py 1000000          # Entraîner sur 1 million de steps
+```
+*Pendant l'entraînement, une phase d'évaluation automatique se lance tous les 20 000 steps pour enregistrer le meilleur modèle.*
+
+### 3. Voir l'IA en action
+Regardez votre agent entraîné piloter sur le circuit.
+```bash
+python play.py                   # Utilise le modèle final
 ```
 
-Suivre la progression en temps réel :
+---
+
+## 🧠 Architecture Technique
+
+| Composant | Description |
+|-----------|-------------|
+| **Observation** | 9 valeurs : 7 raycasts (0 à 250px), vitesse, angle vers le prochain checkpoint. |
+| **Actions** | 2 valeurs continues [-1, 1] : Direction (Steer) et Accélération/Frein (Throttle). |
+| **Algorithme** | **PPO** (Proximal Policy Optimization) - Stable-Baselines3. |
+| **Environnement** | Custom Gymnasium Env (physique 2D Pygame). |
+
+---
+
+## 📊 Suivi des performances
+
+Pour ouvrir le tableau de bord TensorBoard et voir les courbes d'apprentissage :
 ```bash
 tensorboard --logdir logs/
 ```
 
-### 3. Regarder l'agent entraîné
-```bash
-python play.py                         # modèle final
-python play.py eval/best_model.zip     # meilleur modèle (évaluation)
-```
+---
+
+## 🛤️ Personnalisation du circuit
+
+Le circuit est défini par une série de points dans `car_env.py` (`CENTERLINE`). Vous pouvez créer vos propres tracés en modifiant ces coordonnées. L'environnement génèrera automatiquement les murs intérieurs et extérieurs en fonction de la largeur de piste souhaitée.
 
 ---
 
-## Architecture
-
-```
-car_racing_rl/
-├── car_env.py       ← Environnement Gymnasium (physique, raycasts, rendu)
-├── train.py         ← Entraînement PPO (Stable-Baselines3)
-├── play.py          ← Regarder l'agent IA jouer
-├── play_human.py    ← Jouer soi-même au clavier
-├── requirements.txt
-├── models/          ← Checkpoints sauvegardés automatiquement
-├── eval/            ← Meilleur modèle selon EvalCallback
-└── logs/            ← Logs TensorBoard
-```
-
----
-
-## Observation (9 valeurs normalisées [0,1])
-
-| Index | Description |
-|-------|-------------|
-| 0–6   | Distances aux murs (7 rayons : -90° à +90°) |
-| 7     | Vitesse normalisée |
-| 8     | Angle vers le prochain checkpoint (normalisé) |
-
-## Actions (2 valeurs continues [-1, 1])
-
-| Index | Description |
-|-------|-------------|
-| 0     | Steering : -1 = gauche, +1 = droite |
-| 1     | Throttle : -1 = frein/marche arrière, +1 = accélérer |
-
-## Récompenses
-
-| Événement | Valeur |
-|-----------|--------|
-| Checkpoint franchi | +15 |
-| Tour complet | +100 |
-| Vitesse maintenue | +0.08 × speed / step |
-| Pénalité temporelle | −0.02 / step |
-| Crash (sortie de piste) | −50 + fin d'épisode |
-
----
-
-## Personnalisation
-
-**Changer le circuit** : modifie le tableau `CENTERLINE` dans `car_env.py`.  
-Chaque point est `[x, y]` en pixels (écran 900×600, y vers le bas).  
-Le circuit doit être **dans le sens horaire**.
-
-**Rendre la voiture plus rapide** : augmente `MAX_SPEED` et `ACCELERATION`.
-
-**Piste plus large** : augmente `TRACK_WIDTH` (défaut : 45px de chaque côté).
-
----
-
-## Progression suggérée
-
-1. ✅ Jouer soi-même pour comprendre l'env (`play_human.py`)
-2. ✅ Lancer un premier entraînement court (200k steps) pour voir l'agent apprendre
-3. 📈 Entraîner sur 1M steps et observer la courbe de reward sur TensorBoard
-4. 🔬 Modifier les récompenses (reward shaping) et comparer
-5. 🚗 Ajouter plusieurs voitures (multi-agent) avec `SubprocVecEnv`
-6. 🗺 Générer des circuits aléatoires (curriculum learning)
+## 📄 Licence
+Ce projet est sous licence MIT. Libre à vous de l'utiliser et de l'améliorer !
