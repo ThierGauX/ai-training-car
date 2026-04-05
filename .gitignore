@@ -1,0 +1,17 @@
+# Virtual Environments
+venv/
+env/
+.env
+
+# Python caches
+__pycache__/
+*.pyc
+
+# ML environment outputs
+logs/
+models/
+eval/
+*.zip
+
+# OS Files
+.DS_Store
