@@ -15,9 +15,28 @@ import os
 os.environ["SDL_VIDEODRIVER"] = "x11"
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from car_env import CarRacingEnv
+
+class StatusCallback(BaseCallback):
+    def _on_step(self) -> bool:
+        if self.n_calls % 50 == 0:
+            try:
+                total = self.locals.get('total_timesteps', 1_000_000)
+                pct = self.num_timesteps / total
+                CarRacingEnv._ui_queue.put_nowait(("PROGRESS", pct))
+            except: pass
+        return True
+
+    def _on_rollout_start(self) -> bool:
+        try: CarRacingEnv._ui_queue.put_nowait(("STATUS", "GATHERING EXP..."))
+        except: pass
+        return True
+    def _on_rollout_end(self) -> bool:
+        try: CarRacingEnv._ui_queue.put_nowait(("STATUS", "OPTIMIZING NN..."))
+        except: pass
+        return True
 
 LOG_DIR   = "logs/"
 MODEL_DIR = "models/"
@@ -73,7 +92,7 @@ else:
         max_grad_norm   = 0.5,
         verbose         = 1,
         tensorboard_log = LOG_DIR,
-        policy_kwargs   = dict(net_arch=[dict(pi=[128, 128], vf=[128, 128])]),
+        policy_kwargs   = dict(net_arch=dict(pi=[128, 128], vf=[128, 128])),
     )
 
 # ─── Callbacks ───────────────────────────────────────────────────────────────
@@ -100,7 +119,7 @@ print("   Suivre en temps réel : tensorboard --logdir logs/\n")
 
 model.learn(
     total_timesteps   = TOTAL_STEPS,
-    callback          = [checkpoint_cb, eval_cb],
+    callback          = [checkpoint_cb, eval_cb, StatusCallback()],
     progress_bar      = True,
     reset_num_timesteps = (RESUME_FROM is None),
 )
